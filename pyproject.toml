@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kedi-typesafe"
+version = "0.1.0"
+description = "TypeSafe AI integrations for Kedi"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "pydantic-ai-slim==2.36.0",
+    "typesafe-sdk==0.6.0",
+]
+
+[project.optional-dependencies]
+email = ["email-validator>=2.3,<3"]
+langchain = ["langchain==1.3.18"]
+phone = ["pydantic-extra-types>=2.10,<3", "phonenumbers>=9,<10"]
+all = [
+    "email-validator>=2.3,<3",
+    "langchain==1.3.18",
+    "pydantic-extra-types>=2.10,<3",
+    "phonenumbers>=9,<10",
+]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.39.6,<1.40",
+    "email-validator>=2.3,<3",
+    "langchain==1.3.18",
+    "phonenumbers>=9,<10",
+    "pytest>=8.4,<9",
+    "pytest-asyncio>=1.2,<2",
+    "pytest-cov>=7,<8",
+    "pydantic-extra-types>=2.10,<3",
+    "ruff>=0.14,<0.15",
+    "ty>=0.0.17,<0.1",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "live: calls the real TypeSafe API and is excluded from normal quality gates",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "SIM", "UP", "W"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+branch = true
+source = ["kedi_typesafe"]
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.ty.environment]
+python-version = "3.10"
+root = ["./src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kedi_typesafe"]
