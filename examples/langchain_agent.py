@@ -1,4 +1,4 @@
-from typing import Any, Literal, cast
+from typing import Literal
 
 from langchain.agents import create_agent
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ class Triage(BaseModel):
 
 
 with TypeSafeChatModel("jev-latest") as model:
-    agent = cast(Any, create_agent(model, response_format=Triage))
+    agent = create_agent(model, response_format=Triage)
     result = agent.invoke(
         {"messages": [{"role": "user", "content": "I was charged twice. Fix this today."}]}
     )

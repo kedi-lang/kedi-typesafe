@@ -6,7 +6,12 @@ one `kedi-typesafe` package.
 
 ## Pydantic AI
 
-Install the Pydantic package from this workspace and provide `TYPESAFE_API_KEY`:
+Install the package and provide `TYPESAFE_API_KEY` in your environment:
+
+```bash
+pip install kedi-typesafe
+export TYPESAFE_API_KEY="your-key"
+```
 
 ```python
 from typing import Literal
@@ -86,6 +91,59 @@ print(result["structured_response"])
 `TypeSafeChatModel.with_structured_output(...)` is also supported for direct LangChain model use.
 The same Jev schema restrictions described above apply. Free-form invocation, function tools,
 media/tool history, stop sequences, and arbitrary model settings fail before a provider request.
+
+## Email and Phone Extraction
+
+Install the field validators:
+
+```bash
+pip install 'kedi-typesafe[email,phone]'
+```
+
+```python
+from pydantic import BaseModel, EmailStr, Field
+from pydantic_ai import Agent
+from pydantic_extra_types.phone_numbers import PhoneNumber
+
+from kedi_typesafe.integrations.pydantic import TypeSafeModel
+
+
+class Contact(BaseModel):
+    email: EmailStr = Field(description="The current support email, not the archived address")
+    phone: PhoneNumber = Field(description="The current support phone number")
+
+
+agent = Agent(TypeSafeModel(), output_type=Contact)
+result = agent.run_sync(
+    "Archived contact: old@example.com. Current support: help@example.com, +1 202-555-0100."
+)
+print(result.output)
+```
+
+Email and phone candidates are extracted from the supplied text automatically. Jev selects the
+candidate matching the field description; Pydantic then validates the result. Phone numbers use
+Pydantic's normalized format, for example `tel:+1-202-555-0100`. Provide international numbers
+with a country code. Missing candidates or a no-match answer raise an extraction error rather
+than inventing a value. All fields in this initial integration must be required.
+
+For LangChain, use the same `Contact` schema with
+`create_agent(TypeSafeChatModel(), response_format=Contact)` and install
+`kedi-typesafe[langchain,email,phone]`.
+
+## Runnable Examples
+
+After cloning this repository, run `uv sync --all-extras` and set `TYPESAFE_API_KEY`.
+
+| Example | Command |
+| --- | --- |
+| Pydantic classification | `uv run examples/pydantic_agent.py` |
+| LangChain classification | `uv run examples/langchain_agent.py` |
+| Pydantic email and phone | `uv run examples/pydantic_contacts.py` |
+| LangChain email and phone | `uv run examples/langchain_contacts.py` |
+
+These examples call the real TypeSafe API. An async context manager closes owned connections
+after use; it is optional for constructing the model. Reusing a model within the same event
+loop allows its HTTP connection to be reused.
 
 ## Development
 
