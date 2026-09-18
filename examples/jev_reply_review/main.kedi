@@ -28,7 +28,8 @@ SupportedReply = Annotated[
 @supported(reply: str, policy: str) -> bool:
   >> Policy: <policy>
   Reply: <reply>
-  [approved: SupportedReply]
+  It is [approved: SupportedReply] that the reply makes no unsupported
+  claims or commitments under this policy.
 
   [evidence: Any] = `decision_info("approved")`
 
