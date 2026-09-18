@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -26,6 +28,63 @@ from .schema import EvaluationPlan, QuestionSpec, build_evaluation_plan
 
 JSONValue: TypeAlias = JSONContent
 DEFAULT_THRESHOLD = 0.85
+
+
+def _request_metadata(
+    state: JSONValue,
+    plan: EvaluationPlan,
+    *,
+    model: str,
+    threshold: float,
+) -> dict[str, str]:
+    questions = [
+        {
+            "key": question.key,
+            "kind": question.kind,
+            "instructions": question.instructions,
+            "options": list(question.native_options),
+            "path": list(question.path),
+            "probability": question.probability,
+            "nullable": question.nullable,
+            "local_none": question.local_none,
+            "label": question.label,
+            "criteria": question.criteria,
+            "integer_score": question.integer_score,
+        }
+        for question in plan.questions
+    ]
+    state_fingerprint = _json_fingerprint(state)
+    questions_fingerprint = _json_fingerprint(questions)
+    config_fingerprint = _json_fingerprint(
+        {
+            "model": model,
+            "boolean_threshold": threshold,
+            "boolean_comparator": ">",
+        }
+    )
+    return {
+        "state_fingerprint": state_fingerprint,
+        "questions_fingerprint": questions_fingerprint,
+        "config_fingerprint": config_fingerprint,
+        "request_fingerprint": _json_fingerprint(
+            {
+                "state_fingerprint": state_fingerprint,
+                "questions_fingerprint": questions_fingerprint,
+                "config_fingerprint": config_fingerprint,
+            }
+        ),
+    }
+
+
+def _json_fingerprint(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    return f"kedi-typesafe-request-v1:sha256:{hashlib.sha256(payload).hexdigest()}"
 
 
 def validate_threshold(value: Any) -> float:
@@ -105,6 +164,12 @@ class TypeSafeEvaluator:
     ) -> EvaluationResult:
         plan = self._plan(state, schema)
         effective_threshold = self.threshold if threshold is None else validate_threshold(threshold)
+        request_metadata = _request_metadata(
+            state,
+            plan,
+            model=self.model_name,
+            threshold=effective_threshold,
+        )
         if not plan.native_questions():
             return self._result(
                 SystemOneResponse(
@@ -112,6 +177,7 @@ class TypeSafeEvaluator:
                 ),
                 plan,
                 effective_threshold,
+                request_metadata=request_metadata,
             )
         client = self.async_client()
         response = await client.system_one(
@@ -119,7 +185,12 @@ class TypeSafeEvaluator:
             plan.native_questions(),
             model=self.model_name,
         )
-        return self._result(response, plan, effective_threshold)
+        return self._result(
+            response,
+            plan,
+            effective_threshold,
+            request_metadata=request_metadata,
+        )
 
     def async_client(self) -> AsyncSystemOneClient:
         """Return the borrowed client or the owned client for this event loop."""
@@ -145,6 +216,12 @@ class TypeSafeEvaluator:
     ) -> EvaluationResult:
         plan = self._plan(state, schema)
         effective_threshold = self.threshold if threshold is None else validate_threshold(threshold)
+        request_metadata = _request_metadata(
+            state,
+            plan,
+            model=self.model_name,
+            threshold=effective_threshold,
+        )
         if not plan.native_questions():
             return self._result(
                 SystemOneResponse(
@@ -152,6 +229,7 @@ class TypeSafeEvaluator:
                 ),
                 plan,
                 effective_threshold,
+                request_metadata=request_metadata,
             )
         client = self._sync_client
         if client is None:
@@ -166,7 +244,12 @@ class TypeSafeEvaluator:
             plan.native_questions(),
             model=self.model_name,
         )
-        return self._result(response, plan, effective_threshold)
+        return self._result(
+            response,
+            plan,
+            effective_threshold,
+            request_metadata=request_metadata,
+        )
 
     def close(self) -> None:
         if self._owns_sync_client and self._sync_client is not None:
@@ -188,6 +271,8 @@ class TypeSafeEvaluator:
         response: SystemOneResponse,
         plan: EvaluationPlan,
         threshold: float | None = None,
+        *,
+        request_metadata: Mapping[str, str] | None = None,
     ) -> EvaluationResult:
         effective_threshold = self.threshold if threshold is None else threshold
         values, answer_metadata = self._decode(response, plan, effective_threshold)
@@ -205,6 +290,7 @@ class TypeSafeEvaluator:
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens,
             metadata={
+                "schema_version": 1,
                 "answers": answer_metadata,
                 "boolean_threshold": effective_threshold,
                 "boolean_comparator": ">",
@@ -212,6 +298,7 @@ class TypeSafeEvaluator:
                     "input_tokens": response.usage.input_tokens,
                     "output_tokens": response.usage.output_tokens,
                 },
+                **dict(request_metadata or {}),
             },
         )
 
@@ -248,6 +335,7 @@ class TypeSafeEvaluator:
         values: dict[str, Any] = {}
         metadata: dict[str, Any] = {}
         for question in plan.questions:
+            evidence: dict[str, Any]
             if question.local_none:
                 value, evidence = None, {"type": "extraction", "source": "no_candidates"}
             elif question.kind == "noul":
@@ -268,7 +356,10 @@ class TypeSafeEvaluator:
                     labels.append(question.label)
             else:
                 target[path[-1]] = value
-            metadata[question.key] = evidence
+            answer_metadata: dict[str, Any] = {**evidence, "path": list(path)}
+            if question.label is not None:
+                answer_metadata["label"] = question.label
+            metadata[question.key] = answer_metadata
         return values, metadata
 
     def _decode_noul(
@@ -288,6 +379,7 @@ class TypeSafeEvaluator:
         return (probability if question.probability else probability > effective_threshold), {
             "type": "noul",
             "probability": probability,
+            "output_kind": "probability" if question.probability else "boolean",
         }
 
     @staticmethod

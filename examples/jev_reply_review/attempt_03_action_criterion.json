@@ -1,0 +1,131 @@
+{
+  "recorded_at": "2026-09-18T21:12:54.816704+00:00",
+  "source_sha256": "56c7c71569c1f4aeebeda570eee5b1350dc879b81d5b633cfe64f734244894bc",
+  "mode": "live",
+  "versions": {
+    "kedi": "0.4.0",
+    "kedi-typesafe": "0.2.0",
+    "pydantic-ai-slim": "2.45.0",
+    "typesafe-sdk": "0.6.0"
+  },
+  "runs": [
+    {
+      "label": "generate_and_review",
+      "elapsed_seconds": 15.08,
+      "stdout": "Draft: I understand you were charged twice. Your request has been sent for a billing review. At this time, a refund has not been approved and I cannot provide a specific date for when it might arrive. Could you please provide the invoice number to help us look into this?\nJev: supported=True, probability=0.940000, threshold=0.85\n",
+      "result": "I understand you were charged twice. Your request has been sent for a billing review. At this time, a refund has not been approved and I cannot provide a specific date for when it might arrive. Could you please provide the invoice number to help us look into this?",
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 1269,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 69,
+          "total_tokens": 1338,
+          "cost_usd": "0.00084150000000000"
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 548,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 568,
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "label": "negative_control",
+      "elapsed_seconds": 0.894,
+      "stdout": "Jev: supported=False, probability=0.060000, threshold=0.85\n",
+      "result": false,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 504,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 524,
+          "cost_usd": null
+        }
+      ],
+      "expected": false,
+      "matches_expected": true
+    },
+    {
+      "label": "invented_action_control",
+      "elapsed_seconds": 0.792,
+      "stdout": "Jev: supported=False, probability=0.320000, threshold=0.85\n",
+      "result": false,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 508,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 528,
+          "cost_usd": null
+        }
+      ],
+      "expected": false,
+      "matches_expected": true
+    },
+    {
+      "label": "positive_control",
+      "elapsed_seconds": 1.077,
+      "stdout": "Jev: supported=True, probability=0.960000, threshold=0.85\n",
+      "result": true,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 518,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 538,
+          "cost_usd": null
+        }
+      ],
+      "expected": true,
+      "matches_expected": true
+    },
+    {
+      "label": "repair_negative_control",
+      "elapsed_seconds": 3.214,
+      "stdout": "Repaired: We have received your request regarding the duplicate charges on your account. These charges require a billing review, and a refund has not been approved at this time. Consequently, we cannot promise a specific refund date. Could you please provide the invoice number to help us look into this?\nJev: supported=True, probability=0.970000, threshold=0.85\n",
+      "result": true,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 1055,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 70,
+          "total_tokens": 1125,
+          "cost_usd": "0.00073750000000000"
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 549,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 569,
+          "cost_usd": null
+        }
+      ],
+      "expected": true,
+      "matches_expected": true
+    }
+  ]
+}

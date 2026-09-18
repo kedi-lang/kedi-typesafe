@@ -119,22 +119,27 @@ def test_plain_pydantic_agent_returns_validated_model_and_one_provider_call() ->
     assert final_message.usage.output_tokens == 6
     assert final_message.model_name == "jev-2026-09-15"
     assert final_message.provider_name == "typesafe"
-    assert final_message.metadata == {
-        "typesafe": {
-            "answers": {
-                "approved": {"type": "noul", "probability": 0.92},
-                "route": {
-                    "type": "choice",
-                    "choice": "review",
-                    "confidence": 0.7,
-                    "probabilities": {"allow": 0.1, "review": 0.8, "deny": 0.1},
-                },
-            },
-            "boolean_threshold": 0.85,
-            "boolean_comparator": ">",
-            "usage": {"input_tokens": 27, "output_tokens": 6},
-        }
+    assert final_message.metadata is not None
+    metadata = final_message.metadata["typesafe"]
+    assert metadata["schema_version"] == 1
+    assert metadata["answers"] == {
+        "approved": {
+            "type": "noul",
+            "probability": 0.92,
+            "output_kind": "boolean",
+            "path": ["approved"],
+        },
+        "route": {
+            "type": "choice",
+            "choice": "review",
+            "confidence": 0.7,
+            "probabilities": {"allow": 0.1, "review": 0.8, "deny": 0.1},
+            "path": ["route"],
+        },
     }
+    assert metadata["boolean_threshold"] == 0.85
+    assert metadata["boolean_comparator"] == ">"
+    assert metadata["usage"] == {"input_tokens": 27, "output_tokens": 6}
 
 
 def test_plain_pydantic_agent_extracts_constrained_text_fields() -> None:

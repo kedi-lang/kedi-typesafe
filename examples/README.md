@@ -1,6 +1,6 @@
 # Examples
 
-Set `TYPESAFE_API_KEY`; examples do not load or print secrets. Install
+Set `TYPESAFE_API_KEY`; examples do not print secrets. Install
 `kedi-typesafe[all]` for the optional LangChain and contact field dependencies.
 
 - `capabilities.py`: batched nested criteria, raw probability, fractional rubric, labels,
@@ -18,6 +18,10 @@ Set `TYPESAFE_API_KEY`; examples do not load or print secrets. Install
 - `risk_review.py`: optional Kedi pre-tool hook with an explicit allowlist, a
   separate tool-free evaluator, and review usage records. Approval policy remains
   authoritative; this is an additional model-based screen, not a security guarantee.
+- [jev_reply_review/](jev_reply_review/README.md): a generative model drafts a
+  reply, Jev reviews it, and Kedi can revise it once. Includes live records and
+  controls. Requires Kedi's decision-metadata API and `OPENROUTER_API_KEY`;
+  its runner loads dotenv and accepts an explicit `--env-file`.
 
 For a probability and a boolean decision, return the probability and compare locally.
 Each template batches its independent fields; dependencies require separate statements.

@@ -1,0 +1,48 @@
+```
+from kedi import decision_info
+```
+
+> adapter: pydantic
+> model: openrouter/google/gemini-3-flash-preview
+
+@write_reply(customer: str, policy: str, previous: str) -> str:
+  >> Write a brief customer reply: [reply]
+  Use only this policy: <policy>
+  Customer: <customer>
+  Previous draft (empty means start fresh): <previous>
+  Correct any unsupported commitments. No invented approvals, deadlines, or actions. Return only the reply.
+
+  = <reply>
+
+> model: typesafe/jev-latest
+> settings:
+  typesafe_threshold: 0.85
+
+@supported(reply: str, policy: str) -> bool:
+  >> Policy: <policy>
+  Reply: <reply>
+  [approved: Annotated[bool, "Does the reply avoid inventing completed actions, approvals, commitments, or deadlines not supported by the policy?"]]
+
+  [evidence: Any] = `decision_info("approved")`
+
+  `print(f"Jev: supported={approved}, probability={evidence.probability:.6f}, threshold={evidence.threshold}")`
+
+  = `approved`
+
+[customer] = I was charged twice. Please confirm my refund will arrive tomorrow.
+[policy] = Duplicate charges require billing review. No case has been forwarded and no review has started. No refund is approved or scheduled. Ask for the invoice number; do not promise a refund date.
+
+[reply] = `write_reply(customer, policy, "")`
+
+`print(f"Draft: {reply}")`
+
+[approved: bool] = `supported(reply, policy)`
+
+> if: `not approved`:
+  [reply] := `write_reply(customer, policy, reply)`
+  [approved] := `supported(reply, policy)`
+
+> if: `approved`:
+  = <reply>
+> else:
+  = Human review required; the draft was not approved.

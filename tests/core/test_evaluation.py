@@ -101,20 +101,32 @@ async def test_evaluates_all_questions_in_one_call_and_preserves_evidence() -> N
     assert result.model == "jev-2026-09-15"
     assert result.input_tokens == 42
     assert result.output_tokens == 9
-    assert result.metadata == {
-        "answers": {
-            "approved": {"type": "noul", "probability": 0.75},
-            "route": {
-                "type": "choice",
-                "choice": "allow",
-                "confidence": 0.8,
-                "probabilities": {"allow": 0.9, "deny": 0.1},
-            },
+    assert result.metadata["schema_version"] == 1
+    assert result.metadata["answers"] == {
+        "approved": {
+            "type": "noul",
+            "probability": 0.75,
+            "output_kind": "boolean",
+            "path": ["approved"],
         },
-        "boolean_threshold": 0.6,
-        "boolean_comparator": ">",
-        "usage": {"input_tokens": 42, "output_tokens": 9},
+        "route": {
+            "type": "choice",
+            "choice": "allow",
+            "confidence": 0.8,
+            "probabilities": {"allow": 0.9, "deny": 0.1},
+            "path": ["route"],
+        },
     }
+    assert result.metadata["boolean_threshold"] == 0.6
+    assert result.metadata["boolean_comparator"] == ">"
+    assert result.metadata["usage"] == {"input_tokens": 42, "output_tokens": 9}
+    for key in (
+        "state_fingerprint",
+        "questions_fingerprint",
+        "config_fingerprint",
+        "request_fingerprint",
+    ):
+        assert result.metadata[key].startswith("kedi-typesafe-request-v1:sha256:")
     assert len(client.calls) == 1
     assert client.calls[0][0] == {"message": "please"}
     assert set(client.calls[0][1]) == {"approved", "route"}
@@ -142,6 +154,31 @@ async def test_threshold_is_strict_and_unknown_usage_stays_unknown() -> None:
     assert result.values == {"response": False}
     assert result.input_tokens is None
     assert result.output_tokens is None
+
+
+@pytest.mark.asyncio
+async def test_request_fingerprint_includes_effective_decision_config() -> None:
+    client = FakeClient(
+        SystemOneResponse(
+            model="jev-latest",
+            usage=Usage(),
+            answers={"response": NoulAnswer(noul=0.8)},
+        )
+    )
+    evaluator = TypeSafeEvaluator(client=client)
+    schema = {
+        "type": "object",
+        "properties": {"response": {"type": "boolean"}},
+        "required": ["response"],
+    }
+
+    low = await evaluator.evaluate(state="claim", schema=schema, threshold=0.5)
+    high = await evaluator.evaluate(state="claim", schema=schema, threshold=0.9)
+
+    assert low.metadata["state_fingerprint"] == high.metadata["state_fingerprint"]
+    assert low.metadata["questions_fingerprint"] == high.metadata["questions_fingerprint"]
+    assert low.metadata["config_fingerprint"] != high.metadata["config_fingerprint"]
+    assert low.metadata["request_fingerprint"] != high.metadata["request_fingerprint"]
 
 
 def test_sync_evaluation_uses_the_same_plan_and_decoder() -> None:
@@ -214,6 +251,7 @@ async def test_constrained_text_is_selected_from_state_candidates() -> None:
             "new@example.com": 0.9,
             no_match: 0.05,
         },
+        "path": ["email"],
     }
     question = client.calls[0][1]["email"]
     assert isinstance(question, Choice)

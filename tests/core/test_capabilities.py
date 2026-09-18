@@ -82,6 +82,14 @@ def test_full_plan_preserves_metadata_and_nested_fields() -> None:
         email=None,
     )
     assert result.metadata["answers"]["quality"]["score"] == 1.75
+    assert result.metadata["answers"]["evidence.probability"]["path"] == [
+        "evidence",
+        "probability",
+    ]
+    assert result.metadata["answers"]["evidence.probability"]["output_kind"] == "probability"
+    assert result.metadata["answers"]["evidence.accepted"]["output_kind"] == "boolean"
+    assert result.metadata["answers"]["labels.label0"]["path"] == ["labels"]
+    assert result.metadata["answers"]["labels.label0"]["label"] == "urgent"
     assert result.input_tokens == 30
     assert result.metadata["answers"]["email"]["source"] == "no_candidates"
 

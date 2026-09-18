@@ -119,7 +119,14 @@ Pydantic responses expose `provider_details["typesafe"]` and `metadata["typesafe
 LangChain messages expose `response_metadata["typesafe"]`; use `include_raw=True` with
 `with_structured_output` to retain them. Evidence includes raw probabilities, Choice/Score
 distributions and confidence, rubric legends, thresholds, and reported usage. Noul has no separate
-provider confidence. Unknown usage remains `None` in evidence even when framework counters need zero.
+provider confidence. The versioned payload also includes each answer's output path and request,
+state, question, and decision-configuration fingerprints. The combined request fingerprint changes
+when the effective model or boolean threshold changes. Unknown usage remains `None` in evidence even when framework
+counters need zero.
+
+When this package is used through Kedi, `kedi.decision_info(name)` attaches that final-response
+evidence to the corresponding output binding. The helper belongs to Kedi, not this standalone
+package; `kedi-typesafe` remains usable without importing Kedi or storing a global last response.
 
 Reuse the model for warm connections. `async with TypeSafeModel()` and
 `async with TypeSafeChatModel()` close owned connections; borrowed SDK clients remain caller-owned.
@@ -240,6 +247,11 @@ After cloning this repository, run `uv sync --all-extras` and set `TYPESAFE_API_
 These examples call the real TypeSafe API. An async context manager closes owned connections
 after use; it is optional for constructing the model. Reusing a model within the same event
 loop allows its HTTP connection to be reused.
+
+The [Kedi reply-review example](examples/jev_reply_review/README.md) combines
+generative drafting with Jev decisions and an optional revision step. It includes
+the actual live output and decision controls, and requires a Kedi checkout with
+the decision-metadata API plus an OpenRouter API key.
 
 ## Probability and Rubric Bounds
 

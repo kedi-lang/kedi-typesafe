@@ -1,0 +1,131 @@
+{
+  "recorded_at": "2026-09-18T21:11:03.120925+00:00",
+  "source_sha256": "8c3e6fe43542435cf266323275782b809f32a275f92ee1abc36030cd7eb9e960",
+  "mode": "live",
+  "versions": {
+    "kedi": "0.4.0",
+    "kedi-typesafe": "0.2.0",
+    "pydantic-ai-slim": "2.45.0",
+    "typesafe-sdk": "0.6.0"
+  },
+  "runs": [
+    {
+      "label": "generate_and_review",
+      "elapsed_seconds": 8.365,
+      "stdout": "Draft: We have received your request regarding the duplicate charges. Our billing department will need to conduct a review before any refunds can be approved. At this time, we cannot confirm a refund or provide a specific date for when funds might be returned. Could you please provide your invoice number to help us look into this?\nJev: supported=False, probability=0.690000, threshold=0.85\nJev: supported=False, probability=0.760000, threshold=0.85\n",
+      "result": "Human review required; the draft was not approved.",
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 1046,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 76,
+          "total_tokens": 1122,
+          "cost_usd": "0.00075100000000000"
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 556,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 576,
+          "cost_usd": null
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 1106,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 76,
+          "total_tokens": 1182,
+          "cost_usd": "0.00078100000000000"
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 556,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 576,
+          "cost_usd": null
+        }
+      ]
+    },
+    {
+      "label": "negative_control",
+      "elapsed_seconds": 0.92,
+      "stdout": "Jev: supported=False, probability=0.030000, threshold=0.85\n",
+      "result": false,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 505,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 525,
+          "cost_usd": null
+        }
+      ],
+      "expected": false,
+      "matches_expected": true
+    },
+    {
+      "label": "positive_control",
+      "elapsed_seconds": 0.902,
+      "stdout": "Jev: supported=False, probability=0.520000, threshold=0.85\n",
+      "result": false,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 519,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 539,
+          "cost_usd": null
+        }
+      ],
+      "expected": true,
+      "matches_expected": false
+    },
+    {
+      "label": "repair_negative_control",
+      "elapsed_seconds": 3.739,
+      "stdout": "Repaired: I have received your message regarding the duplicate charge. This will require a billing review. A refund has not been approved at this time, and I cannot promise a specific date for a refund. Could you please provide your invoice number?\nJev: supported=False, probability=0.820000, threshold=0.85\n",
+      "result": false,
+      "invocations": [
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 1055,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 61,
+          "total_tokens": 1116,
+          "cost_usd": "0.00071050000000000"
+        },
+        {
+          "requests": 1,
+          "tool_calls": 0,
+          "input_tokens": 541,
+          "cache_read_tokens": 0,
+          "cache_write_tokens": 0,
+          "output_tokens": 20,
+          "total_tokens": 561,
+          "cost_usd": null
+        }
+      ],
+      "expected": true,
+      "matches_expected": false
+    }
+  ]
+}

@@ -27,7 +27,13 @@ from typesafe_sdk import SystemOneResponse, Usage
 from typing_extensions import Self
 
 from ..core import CandidateExtractor, TypeSafeEvaluator
-from ..core.evaluation import DEFAULT_THRESHOLD, AsyncSystemOneClient, JSONValue, validate_threshold
+from ..core.evaluation import (
+    DEFAULT_THRESHOLD,
+    AsyncSystemOneClient,
+    JSONValue,
+    _request_metadata,
+    validate_threshold,
+)
 from ..core.schema import EvaluationPlan
 from ._pydantic_errors import provider_errors
 from ._pydantic_provider import EvaluatorProvider
@@ -168,7 +174,17 @@ class TypeSafeModel(upstream.TypeSafeModel):
                 usage=response.usage,
                 answers={key: value for key, value in response.answers.items() if key != route_key},
             )
-            result = self._evaluator._result(field_response, plan, threshold)
+            result = self._evaluator._result(
+                field_response,
+                plan,
+                threshold,
+                request_metadata=_request_metadata(
+                    state,
+                    plan,
+                    model=self.model_name,
+                    threshold=threshold,
+                ),
+            )
             details["typesafe"] = result.metadata
             # Without an output schema, upstream routing returns a call or raises.
             assert output_tool is not None
