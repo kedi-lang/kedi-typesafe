@@ -1,0 +1,13 @@
+> adapter: pydantic
+> model: typesafe/jev-latest
+@judge(evidence: str) -> bool:
+  > if: The answer agrees with the reference in <evidence>
+    = `True`
+  > else:
+    = `False`
+
+@eval: judge:
+  > data: cases:
+    = `[('Reference: Ankara. Answer: Ankara.', None)]`
+  > metric: correctness(cases):
+    = `float(judge(cases))`

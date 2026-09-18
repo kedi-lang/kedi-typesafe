@@ -1,0 +1,16 @@
+```
+from typing import Annotated
+from kedi.typesafe import Probability
+RefundProbability = Annotated[
+    Probability,
+    "Does the customer request a refund?",
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+[message] = Cancel the order and return my payment.
+>> Evaluate <message>. Refund probability: [p: `RefundProbability`].
+> if: `p > 0.9`:
+  = high confidence
+> else:
+  = review required

@@ -1,0 +1,18 @@
+```
+from typing import Annotated, Literal
+from kedi.typesafe import ChoiceCriteria
+Department = Annotated[
+    Literal["billing", "technical", "other"],
+    "Which department should handle the request?",
+    ChoiceCriteria({
+        "billing": "Payments",
+        "technical": "Software defects",
+        "other": "Neither payments nor software defects",
+    }),
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+[ticket] = My card was charged twice.
+>> Route <ticket> to [department: `Department`].
+= <department>

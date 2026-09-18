@@ -1,0 +1,419 @@
+{
+  "versions": {
+    "kedi-typesafe": "0.2.0",
+    "pydantic-ai-slim": "2.45.0",
+    "langchain": "1.3.18",
+    "langchain-typesafe": "0.0.1a2",
+    "typesafe-sdk": "0.6.0"
+  },
+  "records": [
+    {
+      "adapter": "pydantic",
+      "case": "supported",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.98,
+        "quality": 2
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.9763
+    },
+    {
+      "adapter": "pydantic",
+      "case": "supported",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 2
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 1.4489
+    },
+    {
+      "adapter": "pydantic",
+      "case": "supported",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 2
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 0.9913
+    },
+    {
+      "adapter": "pydantic",
+      "case": "supported",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.98,
+        "quality": 2
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.29
+    },
+    {
+      "adapter": "pydantic",
+      "case": "contradicted",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.03,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.3427
+    },
+    {
+      "adapter": "pydantic",
+      "case": "contradicted",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.03,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 0.9404
+    },
+    {
+      "adapter": "pydantic",
+      "case": "contradicted",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.03,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 1.2069
+    },
+    {
+      "adapter": "pydantic",
+      "case": "contradicted",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.03,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.2928
+    },
+    {
+      "adapter": "pydantic",
+      "case": "unknown",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.3285
+    },
+    {
+      "adapter": "pydantic",
+      "case": "unknown",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 0.9123
+    },
+    {
+      "adapter": "pydantic",
+      "case": "unknown",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 981,
+      "output_tokens": 59,
+      "seconds": 1.0219
+    },
+    {
+      "adapter": "pydantic",
+      "case": "unknown",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 435,
+      "output_tokens": 51,
+      "seconds": 0.3068
+    },
+    {
+      "adapter": "langchain",
+      "case": "supported",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 1.99
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.9961
+    },
+    {
+      "adapter": "langchain",
+      "case": "supported",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 1.99
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 1.4638
+    },
+    {
+      "adapter": "langchain",
+      "case": "supported",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 1.99
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 1.3317
+    },
+    {
+      "adapter": "langchain",
+      "case": "supported",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": true,
+      "values": {
+        "supported": true,
+        "probability": 0.97,
+        "quality": 1.99
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.2984
+    },
+    {
+      "adapter": "langchain",
+      "case": "contradicted",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.03,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.3065
+    },
+    {
+      "adapter": "langchain",
+      "case": "contradicted",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 0.976
+    },
+    {
+      "adapter": "langchain",
+      "case": "contradicted",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 1.1072
+    },
+    {
+      "adapter": "langchain",
+      "case": "contradicted",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.04,
+        "quality": 0
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.3326
+    },
+    {
+      "adapter": "langchain",
+      "case": "unknown",
+      "mode": "batch",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.05,
+        "quality": 0.01
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.3708
+    },
+    {
+      "adapter": "langchain",
+      "case": "unknown",
+      "mode": "separate",
+      "repetition": 0,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.05,
+        "quality": 0.01
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 1.0363
+    },
+    {
+      "adapter": "langchain",
+      "case": "unknown",
+      "mode": "separate",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.05,
+        "quality": 0.01
+      },
+      "correct": true,
+      "requests": 3,
+      "input_tokens": 1047,
+      "output_tokens": 59,
+      "seconds": 1.0998
+    },
+    {
+      "adapter": "langchain",
+      "case": "unknown",
+      "mode": "batch",
+      "repetition": 1,
+      "expected_supported": false,
+      "values": {
+        "supported": false,
+        "probability": 0.05,
+        "quality": 0.01
+      },
+      "correct": true,
+      "requests": 1,
+      "input_tokens": 457,
+      "output_tokens": 51,
+      "seconds": 0.3386
+    }
+  ]
+}

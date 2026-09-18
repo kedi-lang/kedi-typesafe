@@ -53,6 +53,7 @@ def resolve_candidates(
     *,
     field_name: str,
     limit: int,
+    allow_empty: bool = False,
 ) -> tuple[str, ...]:
     """Run and validate one extractor before its candidates become model options."""
 
@@ -68,7 +69,7 @@ def resolve_candidates(
             f"Text extractor for output property {field_name!r} failed: {exc}"
         ) from exc
 
-    if not candidates:
+    if not candidates and not allow_empty:
         raise TypeSafeExtractionError(
             f"Text extractor for output property {field_name!r} found no candidates"
         )

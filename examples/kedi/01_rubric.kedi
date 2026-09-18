@@ -1,0 +1,14 @@
+```
+from typing import Annotated
+from kedi.typesafe import Rubric
+Severity = Annotated[
+    float,
+    "How severe is the service problem?",
+    Rubric(["Cosmetic", "Workaround exists", "Blocked without workaround"]),
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+[ticket] = Export fails in Safari, but works in Chrome.
+>> Evaluate <ticket>. Severity: [severity: `Severity`].
+= `severity`

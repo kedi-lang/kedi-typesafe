@@ -1,0 +1,114 @@
+{
+  "date": "2026-09-18",
+  "model": "jev-latest",
+  "method": "Seven Kedi examples on both adapters; one sample each; execution smoke, not accuracy benchmark",
+  "records": [
+    {
+      "adapter": "pydantic",
+      "example": "01_rubric.kedi",
+      "output": 1.17,
+      "seconds": 0.867
+    },
+    {
+      "adapter": "pydantic",
+      "example": "02_probability.kedi",
+      "output": "review required",
+      "seconds": 0.837
+    },
+    {
+      "adapter": "pydantic",
+      "example": "03_choice.kedi",
+      "output": "billing",
+      "seconds": 0.881
+    },
+    {
+      "adapter": "pydantic",
+      "example": "04_boolean.kedi",
+      "output": "normal queue",
+      "seconds": 0.73
+    },
+    {
+      "adapter": "pydantic",
+      "example": "05_labels.kedi",
+      "output": [
+        "billing",
+        "login"
+      ],
+      "seconds": 0.853
+    },
+    {
+      "adapter": "pydantic",
+      "example": "06_nested.kedi",
+      "output": {
+        "routing": {
+          "department": "billing",
+          "urgent": false
+        },
+        "requests_refund": true
+      },
+      "seconds": 0.881
+    },
+    {
+      "adapter": "pydantic",
+      "example": "07_nullable.kedi",
+      "output": {
+        "department": null,
+        "email": null
+      },
+      "seconds": 0.904
+    },
+    {
+      "adapter": "langchain",
+      "example": "01_rubric.kedi",
+      "output": 1.12,
+      "seconds": 2.065
+    },
+    {
+      "adapter": "langchain",
+      "example": "02_probability.kedi",
+      "output": "review required",
+      "seconds": 0.791
+    },
+    {
+      "adapter": "langchain",
+      "example": "03_choice.kedi",
+      "output": "billing",
+      "seconds": 0.802
+    },
+    {
+      "adapter": "langchain",
+      "example": "04_boolean.kedi",
+      "output": "normal queue",
+      "seconds": 0.854
+    },
+    {
+      "adapter": "langchain",
+      "example": "05_labels.kedi",
+      "output": [
+        "billing"
+      ],
+      "seconds": 0.831
+    },
+    {
+      "adapter": "langchain",
+      "example": "06_nested.kedi",
+      "output": {
+        "routing": {
+          "department": "billing",
+          "urgent": false
+        },
+        "requests_refund": true
+      },
+      "seconds": 0.821
+    },
+    {
+      "adapter": "langchain",
+      "example": "07_nullable.kedi",
+      "output": {
+        "department": null,
+        "email": null
+      },
+      "seconds": 0.806
+    }
+  ]
+}

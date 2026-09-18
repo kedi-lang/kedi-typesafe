@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol, TypeAlias
 
+from jsonschema import Draft202012Validator, ValidationError
 from typesafe_sdk import (
     Answer,
     AsyncTypeSafeClient,
@@ -13,8 +14,10 @@ from typesafe_sdk import (
     JSONContent,
     NoulAnswer,
     Question,
+    ScoreAnswer,
     SystemOneResponse,
     TypeSafeClient,
+    Usage,
 )
 
 from .errors import TypeSafeResponseError
@@ -22,6 +25,15 @@ from .extraction import CandidateExtractor
 from .schema import EvaluationPlan, QuestionSpec, build_evaluation_plan
 
 JSONValue: TypeAlias = JSONContent
+DEFAULT_THRESHOLD = 0.85
+
+
+def validate_threshold(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, (float, int)) or not math.isfinite(value):
+        raise ValueError("TypeSafe boolean threshold must be a finite number")
+    if not 0 <= value <= 1:
+        raise ValueError("TypeSafe boolean threshold must be between 0 and 1")
+    return float(value)
 
 
 class AsyncSystemOneClient(Protocol):
@@ -50,7 +62,7 @@ class SystemOneClient(Protocol):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class EvaluationResult:
-    values: dict[str, bool | str]
+    values: dict[str, Any]
     model: str
     input_tokens: int | None
     output_tokens: int | None
@@ -65,7 +77,7 @@ class TypeSafeEvaluator:
         model_name: str = "jev-latest",
         *,
         api_key: str | None = None,
-        threshold: float = 0.5,
+        threshold: float = DEFAULT_THRESHOLD,
         timeout: float | None = None,
         client: AsyncSystemOneClient | None = None,
         sync_client: SystemOneClient | None = None,
@@ -74,13 +86,8 @@ class TypeSafeEvaluator:
         model_name = model_name.strip()
         if not model_name:
             raise ValueError("TypeSafe model name must not be empty")
-        if isinstance(threshold, bool) or not math.isfinite(threshold):
-            raise ValueError("TypeSafe boolean threshold must be a finite number")
-        if not 0 <= threshold <= 1:
-            raise ValueError("TypeSafe boolean threshold must be between 0 and 1")
-
         self.model_name = model_name
-        self.threshold = float(threshold)
+        self.threshold = validate_threshold(threshold)
         self.text_extractors = dict(text_extractors or {})
         self._api_key = api_key
         self._timeout = timeout
@@ -94,8 +101,28 @@ class TypeSafeEvaluator:
         *,
         state: JSONValue,
         schema: Mapping[str, Any],
+        threshold: float | None = None,
     ) -> EvaluationResult:
         plan = self._plan(state, schema)
+        effective_threshold = self.threshold if threshold is None else validate_threshold(threshold)
+        if not plan.native_questions():
+            return self._result(
+                SystemOneResponse(
+                    model=self.model_name, answers={}, usage=Usage(input_tokens=0, output_tokens=0)
+                ),
+                plan,
+                effective_threshold,
+            )
+        client = self.async_client()
+        response = await client.system_one(
+            state,
+            plan.native_questions(),
+            model=self.model_name,
+        )
+        return self._result(response, plan, effective_threshold)
+
+    def async_client(self) -> AsyncSystemOneClient:
+        """Return the borrowed client or the owned client for this event loop."""
         client = self._borrowed_client
         if client is None:
             loop = asyncio.get_running_loop()
@@ -107,20 +134,25 @@ class TypeSafeEvaluator:
                     timeout=self._timeout,
                 )
                 self._clients[loop] = client
-        response = await client.system_one(
-            state,
-            plan.native_questions(),
-            model=self.model_name,
-        )
-        return self._result(response, plan)
+        return client
 
     def evaluate_sync(
         self,
         *,
         state: JSONValue,
         schema: Mapping[str, Any],
+        threshold: float | None = None,
     ) -> EvaluationResult:
         plan = self._plan(state, schema)
+        effective_threshold = self.threshold if threshold is None else validate_threshold(threshold)
+        if not plan.native_questions():
+            return self._result(
+                SystemOneResponse(
+                    model=self.model_name, answers={}, usage=Usage(input_tokens=0, output_tokens=0)
+                ),
+                plan,
+                effective_threshold,
+            )
         client = self._sync_client
         if client is None:
             client = TypeSafeClient(
@@ -134,7 +166,7 @@ class TypeSafeEvaluator:
             plan.native_questions(),
             model=self.model_name,
         )
-        return self._result(response, plan)
+        return self._result(response, plan, effective_threshold)
 
     def close(self) -> None:
         if self._owns_sync_client and self._sync_client is not None:
@@ -155,8 +187,18 @@ class TypeSafeEvaluator:
         self,
         response: SystemOneResponse,
         plan: EvaluationPlan,
+        threshold: float | None = None,
     ) -> EvaluationResult:
-        values, answer_metadata = self._decode(response, plan)
+        effective_threshold = self.threshold if threshold is None else threshold
+        values, answer_metadata = self._decode(response, plan, effective_threshold)
+        if plan.schema is not None:
+            try:
+                validator: Any = Draft202012Validator(plan.schema)
+                validator.validate(values)
+            except ValidationError as exc:
+                raise TypeSafeResponseError(
+                    f"TypeSafe output failed schema validation at {list(exc.path)!r}: {exc.message}"
+                ) from exc
         return EvaluationResult(
             values=values,
             model=response.model,
@@ -164,7 +206,7 @@ class TypeSafeEvaluator:
             output_tokens=response.usage.output_tokens,
             metadata={
                 "answers": answer_metadata,
-                "boolean_threshold": self.threshold,
+                "boolean_threshold": effective_threshold,
                 "boolean_comparator": ">",
                 "usage": {
                     "input_tokens": response.usage.input_tokens,
@@ -191,8 +233,9 @@ class TypeSafeEvaluator:
         self,
         response: SystemOneResponse,
         plan: EvaluationPlan,
-    ) -> tuple[dict[str, bool | str], dict[str, Any]]:
-        expected_keys = {question.key for question in plan.questions}
+        threshold: float | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        expected_keys = {question.key for question in plan.questions if not question.local_none}
         actual_keys = set(response.answers)
         if actual_keys != expected_keys:
             missing = sorted(expected_keys - actual_keys)
@@ -202,15 +245,29 @@ class TypeSafeEvaluator:
                 f"missing={missing}, unexpected={unexpected}"
             )
 
-        values: dict[str, bool | str] = {}
+        values: dict[str, Any] = {}
         metadata: dict[str, Any] = {}
         for question in plan.questions:
-            answer = response.answers[question.key]
-            if question.kind == "noul":
-                value, evidence = self._decode_noul(question, answer)
+            if question.local_none:
+                value, evidence = None, {"type": "extraction", "source": "no_candidates"}
+            elif question.kind == "noul":
+                value, evidence = self._decode_noul(
+                    question, response.answers[question.key], threshold
+                )
+            elif question.kind == "score":
+                value, evidence = self._decode_score(question, response.answers[question.key])
             else:
-                value, evidence = self._decode_choice(question, answer)
-            values[question.key] = value
+                value, evidence = self._decode_choice(question, response.answers[question.key])
+            path = question.path or (question.key,)
+            target = values
+            for segment in path[:-1]:
+                target = target.setdefault(segment, {})
+            if question.label is not None:
+                labels = target.setdefault(path[-1], [])
+                if value:
+                    labels.append(question.label)
+            else:
+                target[path[-1]] = value
             metadata[question.key] = evidence
         return values, metadata
 
@@ -218,7 +275,8 @@ class TypeSafeEvaluator:
         self,
         question: QuestionSpec,
         answer: Answer,
-    ) -> tuple[bool, dict[str, Any]]:
+        threshold: float | None = None,
+    ) -> tuple[bool | float, dict[str, Any]]:
         if not isinstance(answer, NoulAnswer):
             raise TypeSafeResponseError(f"TypeSafe answer {question.key!r} must be a Noul answer")
         probability = answer.noul
@@ -226,7 +284,8 @@ class TypeSafeEvaluator:
             raise TypeSafeResponseError(
                 f"TypeSafe Noul answer {question.key!r} returned invalid probability {probability!r}"
             )
-        return probability > self.threshold, {
+        effective_threshold = self.threshold if threshold is None else threshold
+        return (probability if question.probability else probability > effective_threshold), {
             "type": "noul",
             "probability": probability,
         }
@@ -235,14 +294,14 @@ class TypeSafeEvaluator:
     def _decode_choice(
         question: QuestionSpec,
         answer: Answer,
-    ) -> tuple[str, dict[str, Any]]:
+    ) -> tuple[str | None, dict[str, Any]]:
         if not isinstance(answer, ChoiceAnswer):
             raise TypeSafeResponseError(f"TypeSafe answer {question.key!r} must be a Choice answer")
-        if answer.choice in question.rejected_options:
+        if answer.choice in question.rejected_options and not question.nullable:
             raise TypeSafeResponseError(
                 f"TypeSafe could not extract a matching candidate for {question.key!r}"
             )
-        if answer.choice not in question.options:
+        if answer.choice not in question.native_options:
             raise TypeSafeResponseError(
                 f"TypeSafe Choice answer {question.key!r} returned unsupported value "
                 f"{answer.choice!r}"
@@ -265,11 +324,36 @@ class TypeSafeEvaluator:
             raise TypeSafeResponseError(
                 f"TypeSafe Choice answer {question.key!r} returned invalid confidence"
             )
-        return answer.choice, {
+        return (None if answer.choice in question.rejected_options else answer.choice), {
             "type": "extraction" if question.kind == "extract" else "choice",
             "choice": answer.choice,
             "confidence": answer.confidence,
             "probabilities": probabilities,
+        }
+
+    @staticmethod
+    def _decode_score(question: QuestionSpec, answer: Answer) -> tuple[float | int, dict[str, Any]]:
+        if not isinstance(answer, ScoreAnswer):
+            raise TypeSafeResponseError(f"TypeSafe answer {question.key!r} must be a Score answer")
+        expected = set(range(len(question.criteria)))
+        probabilities = answer.probabilities
+        if set(probabilities) != expected or set(answer.legend) != expected:
+            raise TypeSafeResponseError("Score probabilities and legend must match rubric levels")
+        if any(
+            not math.isfinite(p) or not 0 <= p <= 1 for p in probabilities.values()
+        ) or not math.isclose(sum(probabilities.values()), 1, abs_tol=1e-6):
+            raise TypeSafeResponseError("Invalid Score probabilities")
+        if not math.isfinite(answer.score) or not 0 <= answer.score <= max(expected):
+            raise TypeSafeResponseError("Invalid rubric score")
+        if not math.isfinite(answer.confidence) or not 0 <= answer.confidence <= 1:
+            raise TypeSafeResponseError("Invalid Score confidence")
+        value = int(answer.score + 0.5) if question.integer_score else answer.score
+        return value, {
+            "type": "score",
+            "score": answer.score,
+            "confidence": answer.confidence,
+            "probabilities": dict(probabilities),
+            "legend": dict(answer.legend),
         }
 
 

@@ -1,0 +1,16 @@
+```
+from typing import Annotated
+from kedi.typesafe import Probability
+Evidence = Annotated[
+    Probability,
+    "Does the ticket explicitly describe a billing or technical issue?",
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+[ticket] = I was charged twice for the same invoice.
+>> Classify <ticket>. Department: [department: Literal["billing", "technical"]]. Evidence: [evidence: `Evidence`].
+> if: `evidence > 0.85`:
+  = <department>
+> else:
+  = review

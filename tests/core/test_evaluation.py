@@ -163,7 +163,7 @@ def test_sync_evaluation_uses_the_same_plan_and_decoder() -> None:
         },
     )
 
-    assert result.values == {"response": True}
+    assert result.values == {"response": False}
     assert client.calls[0][0] == "claim"
     assert client.calls[0][2] == "jev-latest"
 

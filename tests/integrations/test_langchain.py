@@ -134,7 +134,8 @@ def test_plain_langchain_agent_returns_validated_model_and_usage() -> None:
     assert message.response_metadata["provider_name"] == "typesafe"
     assert model.asdict() == {
         "model_name": "jev-latest",
-        "threshold": 0.5,
+        "threshold": 0.85,
+        "typesafe_tool_call_threshold": 0.6,
         "_type": "typesafe-jev",
     }
     assert model.profile is not None and model.profile.get("structured_output") is True
@@ -174,13 +175,13 @@ def test_with_structured_output_supports_pydantic_and_raw_schemas() -> None:
         "properties": {"response": {"type": "boolean"}},
         "required": ["response"],
     }
-    assert model.with_structured_output(raw_schema).invoke("Evaluate") == {"response": True}
+    assert model.with_structured_output(raw_schema).invoke("Evaluate") == {"response": False}
     openai_schema = {
         "type": "function",
         "function": {"name": "BooleanResponse", "parameters": raw_schema},
     }
     included = model.with_structured_output(openai_schema, include_raw=True).invoke("Evaluate")
-    assert included["parsed"] == {"response": True}
+    assert included["parsed"] == {"response": False}
     assert isinstance(included["raw"], AIMessage)
     assert included["parsing_error"] is None
 
@@ -195,7 +196,7 @@ def test_with_structured_output_can_return_parsing_error_with_raw_message() -> N
                 raise ValueError("true is rejected after schema validation")
             return self
 
-    client = FakeSyncClient([_response(response=NoulAnswer(noul=0.8))])
+    client = FakeSyncClient([_response(response=NoulAnswer(noul=0.9))])
     output = (
         TypeSafeChatModel(sync_client=client)
         .with_structured_output(
@@ -210,7 +211,7 @@ def test_with_structured_output_can_return_parsing_error_with_raw_message() -> N
     assert isinstance(output["parsing_error"], ValueError)
 
     failing_model = TypeSafeChatModel(
-        sync_client=FakeSyncClient([_response(response=NoulAnswer(noul=0.8))])
+        sync_client=FakeSyncClient([_response(response=NoulAnswer(noul=0.9))])
     )
     with pytest.raises(ValueError, match="true is rejected"):
         failing_model.with_structured_output(RejectTrue).invoke("Evaluate")
@@ -233,12 +234,14 @@ def test_messages_to_state_accepts_text_history_and_rejects_unsupported_parts() 
 
     with pytest.raises(ValueError, match="at least one"):
         messages_to_state([])
-    with pytest.raises(ValueError, match="tool"):
+    assert "result" in str(
         messages_to_state([ToolMessage(content="result", tool_call_id="call-1")])
-    with pytest.raises(ValueError, match="tool-call"):
+    )
+    assert "lookup" in str(
         messages_to_state(
             [AIMessage(content="", tool_calls=[{"name": "lookup", "args": {}, "id": "1"}])]
         )
+    )
     with pytest.raises(ValueError, match="image"):
         messages_to_state(
             [HumanMessage(content=[{"type": "image_url", "image_url": "https://example.com"}])]
@@ -255,8 +258,7 @@ def test_rejects_tools_raw_calls_and_model_settings_before_provider() -> None:
     schema = Decision.model_json_schema()
     response_format = _response_format(schema)
 
-    with pytest.raises(ValueError, match="does not support tools"):
-        model.bind_tools([lambda: None], response_format=response_format)
+    model.bind_tools([lambda: None], response_format=response_format)
     with pytest.raises(ValueError, match="tool choice"):
         model.bind_tools([], tool_choice="any", response_format=response_format)
     with pytest.raises(ValueError, match="requires native structured output"):

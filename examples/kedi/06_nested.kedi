@@ -1,0 +1,19 @@
+> adapter: pydantic
+> model: typesafe/jev-latest
+~Routing(
+  department: Literal["billing", "technical", "other"],
+  urgent: Annotated[
+    bool,
+    "Is immediate intervention required?"
+  ]
+)
+~Review(
+  routing: Routing,
+  requests_refund: Annotated[
+    bool,
+    "Does the customer explicitly request a refund?"
+  ]
+)
+[ticket] = The service works, but my invoice is duplicated. Please refund the duplicate charge.
+>> Evaluate <ticket>: [review: Review].
+= `review.model_dump()`

@@ -1,0 +1,26 @@
+```
+from typing import Annotated
+from kedi.typesafe import Rubric
+
+Correctness = Annotated[
+    float,
+    "Assess correctness against the reference",
+    Rubric(["Incorrect", "Partly correct", "Correct"]),
+]
+Completeness = Annotated[
+    float,
+    "Assess coverage of the reference",
+    Rubric(["Missing", "Partial", "Complete"]),
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+@judge(evidence: str) -> float:
+  >> Evaluate <evidence>. Correctness: [correctness: `Correctness`]. Completeness: [completeness: `Completeness`].
+  = `(0.75 * correctness + 0.25 * completeness) / 2`
+
+@eval: judge:
+  > data: cases:
+    = `[('Reference: Ankara. Answer: Ankara.', None)]`
+  > metric: weighted_quality(cases):
+    = `judge(cases)`

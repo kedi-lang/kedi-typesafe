@@ -1,0 +1,12 @@
+> adapter: pydantic
+> model: typesafe/jev-latest
+~Contact(
+  department: Optional[Literal["billing", "technical"]],
+  email: Annotated[
+    Optional[Email],
+    "Customer's contact email, if present"
+  ]
+)
+[message] = Thank you for your help. I have no further request.
+>> Extract contact information from <message>: [contact: Contact].
+= `contact.model_dump()`

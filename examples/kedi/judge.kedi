@@ -1,0 +1,20 @@
+```
+from typing import Annotated
+from kedi.typesafe import Rubric
+Quality = Annotated[
+    float,
+    "Assess answer correctness against the supplied reference",
+    Rubric(["Incorrect", "Partly correct", "Fully correct"]),
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+@judge(evidence: str) -> float:
+  >> Evaluate <evidence>. Quality: [quality: `Quality`].
+  = `quality / 2`
+
+@eval: judge:
+  > data: cases:
+    = `[('Reference: Ankara. Answer: Ankara.', None)]`
+  > metric: quality(cases):
+    = `judge(cases)`

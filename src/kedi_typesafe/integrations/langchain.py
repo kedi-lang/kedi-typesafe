@@ -16,21 +16,32 @@ from langchain_core.messages import (
     ChatMessage,
     HumanMessage,
     SystemMessage,
+    ToolMessage,
 )
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import Runnable, RunnableLambda
-from pydantic import PrivateAttr, TypeAdapter
+from langchain_core.utils.function_calling import convert_to_openai_tool
+from langchain_typesafe._state import serialize_state
+from pydantic import PrivateAttr, TypeAdapter, field_validator
 from typing_extensions import Self
 
 from ..core import CandidateExtractor, TypeSafeEvaluator
-from ..core.evaluation import AsyncSystemOneClient, JSONValue, SystemOneClient
+from ..core.evaluation import (
+    DEFAULT_THRESHOLD,
+    AsyncSystemOneClient,
+    JSONValue,
+    SystemOneClient,
+    validate_threshold,
+)
+from ._langchain_routing import ToolCallProposed, prepare_routing, resolve_routing
+from ._langchain_transport import ClassifierTransport, SyncClassifierTransport
 
 _PROFILE = {
     "name": "TypeSafe Jev",
     "text_inputs": True,
     "text_outputs": True,
-    "tool_calling": False,
-    "tool_choice": False,
+    "tool_calling": True,
+    "tool_choice": True,
     "structured_output": True,
 }
 
@@ -40,14 +51,16 @@ def messages_to_state(messages: list[BaseMessage]) -> JSONValue:
 
     rendered: list[JSONValue] = []
     for message in messages:
-        if isinstance(message, AIMessage) and (message.tool_calls or message.invalid_tool_calls):
-            _unsupported_message("assistant tool-call history")
+        if isinstance(message, AIMessage) and message.invalid_tool_calls:
+            _unsupported_message("invalid assistant tool-call history")
         if isinstance(message, SystemMessage):
             role = "system"
         elif isinstance(message, HumanMessage):
             role = "user"
         elif isinstance(message, AIMessage):
             role = "assistant"
+        elif isinstance(message, ToolMessage):
+            role = "tool"
         elif isinstance(message, ChatMessage) and message.role in {
             "system",
             "user",
@@ -60,7 +73,7 @@ def messages_to_state(messages: list[BaseMessage]) -> JSONValue:
 
     if not rendered:
         raise ValueError("TypeSafeChatModel requires at least one supported text message")
-    return {"messages": rendered}
+    return {"messages": serialize_state(messages)}
 
 
 def _text_content(message: BaseMessage) -> str:
@@ -94,15 +107,25 @@ class TypeSafeChatModel(BaseChatModel):
     """LangChain chat model backed by TypeSafe AI's System One API."""
 
     model_name: str = "jev-latest"
-    threshold: float = 0.5
+    threshold: float = DEFAULT_THRESHOLD
+    typesafe_threshold: float | None = None
+    typesafe_tool_call_threshold: float = 0.6
     _evaluator: TypeSafeEvaluator = PrivateAttr()
+    _transport: ClassifierTransport | None = PrivateAttr(default=None)
+
+    @field_validator(
+        "threshold", "typesafe_threshold", "typesafe_tool_call_threshold", mode="before"
+    )
+    @classmethod
+    def _validate_threshold(cls, value: Any) -> float:
+        return validate_threshold(value)
 
     def __init__(
         self,
         model_name: str = "jev-latest",
         *,
         api_key: str | None = None,
-        threshold: float = 0.5,
+        threshold: float = DEFAULT_THRESHOLD,
         timeout: float | None = None,
         client: AsyncSystemOneClient | None = None,
         sync_client: SystemOneClient | None = None,
@@ -116,6 +139,10 @@ class TypeSafeChatModel(BaseChatModel):
             **kwargs,
         }
         super().__init__(**model_values)
+        if client is None or sync_client is None:
+            self._transport = ClassifierTransport(api_key=api_key, timeout=timeout)
+            client = client or self._transport
+            sync_client = sync_client or SyncClassifierTransport(self._transport)
         self._evaluator = TypeSafeEvaluator(
             model_name,
             api_key=api_key,
@@ -132,7 +159,13 @@ class TypeSafeChatModel(BaseChatModel):
 
     @property
     def _identifying_params(self) -> dict[str, Any]:
-        return {"model_name": self.model_name, "threshold": self.threshold}
+        return {
+            "model_name": self.model_name,
+            "threshold": self.typesafe_threshold
+            if self.typesafe_threshold is not None
+            else self.threshold,
+            "typesafe_tool_call_threshold": self.typesafe_tool_call_threshold,
+        }
 
     def _generate(
         self,
@@ -142,12 +175,25 @@ class TypeSafeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         del run_manager
+        threshold = validate_threshold(
+            kwargs.pop(
+                "typesafe_threshold",
+                self.typesafe_threshold if self.typesafe_threshold is not None else self.threshold,
+            )
+        )
+        tools = kwargs.pop("tools", [])
+        tool_threshold = validate_threshold(
+            kwargs.pop("typesafe_tool_call_threshold", self.typesafe_tool_call_threshold)
+        )
         schema = self._request_schema(stop=stop, kwargs=kwargs)
+        request = prepare_routing(schema, tools, messages)
         result = self._evaluator.evaluate_sync(
             state=messages_to_state(messages),
-            schema=schema,
+            schema=request.schema,
+            threshold=threshold,
         )
-        return _chat_result(result)
+        result, call = resolve_routing(result, request, tool_threshold)
+        return _chat_result(result, call)
 
     async def _agenerate(
         self,
@@ -157,12 +203,25 @@ class TypeSafeChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         del run_manager
+        threshold = validate_threshold(
+            kwargs.pop(
+                "typesafe_threshold",
+                self.typesafe_threshold if self.typesafe_threshold is not None else self.threshold,
+            )
+        )
+        tools = kwargs.pop("tools", [])
+        tool_threshold = validate_threshold(
+            kwargs.pop("typesafe_tool_call_threshold", self.typesafe_tool_call_threshold)
+        )
         schema = self._request_schema(stop=stop, kwargs=kwargs)
+        request = prepare_routing(schema, tools, messages)
         result = await self._evaluator.evaluate(
             state=messages_to_state(messages),
-            schema=schema,
+            schema=request.schema,
+            threshold=threshold,
         )
-        return _chat_result(result)
+        result, call = resolve_routing(result, request, tool_threshold)
+        return _chat_result(result, call)
 
     def bind_tools(
         self,
@@ -171,11 +230,19 @@ class TypeSafeChatModel(BaseChatModel):
         tool_choice: str | None = None,
         **kwargs: Any,
     ) -> Runnable[Any, AIMessage]:
-        if tools:
-            raise ValueError("TypeSafeChatModel does not support tools")
-        if tool_choice is not None:
-            raise ValueError("TypeSafeChatModel does not support tool choice")
+        if tool_choice not in (None, "auto", "none"):
+            raise ValueError("TypeSafeChatModel supports only auto or none tool choice")
+        definitions = (
+            [convert_to_openai_tool(tool)["function"] for tool in tools]
+            if tool_choice != "none"
+            else []
+        )
         response_format = kwargs.pop("response_format", None)
+        settings = {
+            name: kwargs.pop(name)
+            for name in ("typesafe_threshold", "typesafe_tool_call_threshold")
+            if name in kwargs
+        }
         if kwargs:
             names = ", ".join(sorted(kwargs))
             raise ValueError(f"TypeSafeChatModel does not support model settings: {names}")
@@ -183,7 +250,7 @@ class TypeSafeChatModel(BaseChatModel):
             raise ValueError(
                 "TypeSafeChatModel requires native structured output; provide a response schema"
             )
-        return self.bind(response_format=response_format)
+        return self.bind(response_format=response_format, tools=definitions, **settings)
 
     def with_structured_output(
         self,
@@ -213,12 +280,17 @@ class TypeSafeChatModel(BaseChatModel):
 
     def close(self) -> None:
         self._evaluator.close()
+        if self._transport is not None:
+            self._transport.close()
 
     async def aclose(self) -> None:
-        await self._evaluator.aclose()
+        await self.aclose_current()
+        self.close()
 
     async def aclose_current(self) -> None:
         await self._evaluator.aclose_current()
+        if self._transport is not None:
+            await self._transport.aclose()
 
     def __enter__(self) -> Self:
         return self
@@ -306,7 +378,7 @@ def _message_text(message: AIMessage) -> str:
     return cast(str, message.content)
 
 
-def _chat_result(result: Any) -> ChatResult:
+def _chat_result(result: Any, call: AIMessage | None = None) -> ChatResult:
     usage_metadata = None
     if result.input_tokens is not None or result.output_tokens is not None:
         input_tokens = result.input_tokens or 0
@@ -325,10 +397,12 @@ def _chat_result(result: Any) -> ChatResult:
         },
         usage_metadata=usage_metadata,
     )
+    if call is not None:
+        message = message.model_copy(update={"content": "", "tool_calls": call.tool_calls})
     return ChatResult(
         generations=[ChatGeneration(message=message)],
         llm_output={"model_name": result.model, "provider_name": "typesafe"},
     )
 
 
-__all__ = ["TypeSafeChatModel", "messages_to_state"]
+__all__ = ["TypeSafeChatModel", "ToolCallProposed", "messages_to_state"]

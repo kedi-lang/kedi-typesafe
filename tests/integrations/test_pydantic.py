@@ -16,7 +16,6 @@ from pydantic_ai.messages import (
     SystemPromptPart,
     TextContent,
     TextPart,
-    ToolCallPart,
     UserPromptPart,
 )
 from pydantic_ai.models import ModelRequestParameters
@@ -103,12 +102,7 @@ def test_plain_pydantic_agent_returns_validated_model_and_one_provider_call() ->
     assert len(client.calls) == 1
     state, questions, selected_model = client.calls[0]
     assert state == {
-        "messages": [
-            {
-                "role": "user",
-                "content": "The account has two conflicting verification records.",
-            }
-        ],
+        "state": "The account has two conflicting verification records.",
         "instructions": "Apply the supplied policy.",
     }
     assert selected_model == "jev-latest"
@@ -117,7 +111,9 @@ def test_plain_pydantic_agent_returns_validated_model_and_one_provider_call() ->
     assert isinstance(questions["route"], Choice)
     assert questions["route"].criteria == {"allow": None, "review": None, "deny": None}
 
-    final_message = result.all_messages()[-1]
+    final_message = next(
+        message for message in reversed(result.all_messages()) if isinstance(message, ModelResponse)
+    )
     assert isinstance(final_message, ModelResponse)
     assert final_message.usage.input_tokens == 27
     assert final_message.usage.output_tokens == 6
@@ -134,7 +130,7 @@ def test_plain_pydantic_agent_returns_validated_model_and_one_provider_call() ->
                     "probabilities": {"allow": 0.1, "review": 0.8, "deny": 0.1},
                 },
             },
-            "boolean_threshold": 0.5,
+            "boolean_threshold": 0.85,
             "boolean_comparator": ">",
             "usage": {"input_tokens": 27, "output_tokens": 6},
         }
@@ -217,7 +213,7 @@ def test_plain_string_uses_explicit_field_extractor() -> None:
 @pytest.mark.parametrize(
     ("output_type", "answer", "expected"),
     [
-        (bool, NoulAnswer(noul=0.51), True),
+        (bool, NoulAnswer(noul=0.51), False),
         (
             Literal["yes", "no"],
             ChoiceAnswer(choice="yes", confidence=1, probabilities={"yes": 1, "no": 0}),
@@ -239,12 +235,12 @@ def test_supports_root_bool_and_literal(
 def test_rejects_text_generation_before_calling_provider() -> None:
     client = FakeClient([])
     model = TypeSafeModel(client=client)
-    with pytest.raises(UserError, match="requires native structured output"):
+    with pytest.raises(UserError, match="Text output is not supported"):
         Agent(model).run_sync("Write a story")
     assert client.calls == []
 
 
-def test_rejects_tools_before_calling_provider() -> None:
+def test_tools_require_an_explicit_purpose_before_calling_provider() -> None:
     client = FakeClient([])
     agent = Agent(TypeSafeModel(client=client), output_type=bool)
 
@@ -254,7 +250,7 @@ def test_rejects_tools_before_calling_provider() -> None:
 
     _ = lookup
 
-    with pytest.raises(UserError, match="does not support function or native tools"):
+    with pytest.raises(UserError, match="docstring"):
         agent.run_sync("Is evidence available?")
     assert client.calls == []
 
@@ -274,7 +270,7 @@ async def test_context_manager_does_not_close_borrowed_client() -> None:
     async with TypeSafeModel("jev-special", client=client) as model:
         assert model.model_name == "jev-special"
         assert model.system == "typesafe"
-        assert model.profile.get("supports_tools") is False
+        assert model.profile.get("supports_tools") is True
         assert model.profile.get("supports_json_schema_output") is True
         await model.aclose_current()
     assert client.closed is False
@@ -291,7 +287,9 @@ def test_unknown_usage_is_not_converted_to_zero() -> None:
         ]
     )
     result = Agent(TypeSafeModel(client=client), output_type=bool).run_sync("Evaluate")
-    final_message = result.all_messages()[-1]
+    final_message = next(
+        message for message in reversed(result.all_messages()) if isinstance(message, ModelResponse)
+    )
     assert isinstance(final_message, ModelResponse)
     assert final_message.usage.input_tokens == 0
     assert final_message.usage.output_tokens == 0
@@ -322,40 +320,28 @@ def test_messages_to_state_preserves_text_history_and_latest_instructions() -> N
         ]
     )
     assert state == {
-        "messages": [
-            {"role": "user", "content": "first\n second"},
-            {"role": "assistant", "content": '{"response":true}'},
-            {"role": "system", "content": "runtime system context"},
+        "history": [
+            {"user": "first\n\n second"},
+            {"assistant": '{"response":true}'},
+            {"system": "runtime system context"},
             {
-                "role": "user",
-                "content": (
+                "retry": (
                     "Validation feedback:\ninvalid previous value\n\nFix the errors and try again."
                 ),
             },
-            {"role": "user", "content": "next"},
         ],
-        "instructions": "new",
+        "text": "next",
     }
 
 
-def test_messages_to_state_rejects_empty_and_tool_history() -> None:
-    with pytest.raises(ValueError, match="at least one"):
+def test_messages_to_state_rejects_empty_and_media() -> None:
+    with pytest.raises(UserError, match="without user text"):
         messages_to_state([])
-
-    class UnsupportedPart:
-        part_kind = "tool-return"
-
-    request = ModelRequest(parts=[UnsupportedPart()])  # type: ignore[list-item]
-    with pytest.raises(ValueError, match="tool-return"):
-        messages_to_state([request])
-
-    with pytest.raises(ValueError, match="tool-call"):
-        messages_to_state([ModelResponse(parts=[ToolCallPart("lookup")])])
 
     media_request = ModelRequest(
         parts=[UserPromptPart([ImageUrl("https://example.com/evidence.png")])]
     )
-    with pytest.raises(ValueError, match="image-url"):
+    with pytest.raises(UserError):
         messages_to_state([media_request])
 
 

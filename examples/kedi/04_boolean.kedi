@@ -1,0 +1,22 @@
+```
+from typing import Annotated
+from kedi.typesafe import BooleanCriteria
+Urgency = Annotated[
+    bool,
+    "Does this need immediate intervention?",
+    BooleanCriteria(
+        true="Service is unavailable",
+        false="Service is usable, or harm is not established",
+    ),
+]
+```
+> adapter: pydantic
+> model: typesafe/jev-latest
+> settings:
+    typesafe_threshold: 0.9
+[ticket] = Production writes are failing without a workaround.
+>> Evaluate <ticket>. Immediate intervention: [urgent: `Urgency`].
+> if: `urgent`:
+  = escalate
+> else:
+  = normal queue

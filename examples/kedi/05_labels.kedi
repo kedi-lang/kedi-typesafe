@@ -1,0 +1,7 @@
+> adapter: pydantic
+> model: typesafe/jev-latest
+> settings:
+    typesafe_threshold: 0.85
+[ticket] = I was charged twice, and signing in returns an error.
+>> Classify <ticket>: [labels: Annotated[list[Literal["billing", "login", "shipping"]], "All topics explicitly raised by the customer"]].
+= `labels`
