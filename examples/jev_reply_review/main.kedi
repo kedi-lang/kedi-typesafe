@@ -1,5 +1,12 @@
 ```
+from typing import Annotated
 from kedi import decision_info
+
+SupportedReply = Annotated[
+    bool,
+    "Does the reply avoid inventing completed actions, approvals, "
+    "commitments, or deadlines not supported by the policy?",
+]
 ```
 
 > adapter: pydantic
@@ -21,7 +28,7 @@ from kedi import decision_info
 @supported(reply: str, policy: str) -> bool:
   >> Policy: <policy>
   Reply: <reply>
-  [approved: Annotated[bool, "Does the reply avoid inventing completed actions, approvals, commitments, or deadlines not supported by the policy?"]]
+  [approved: SupportedReply]
 
   [evidence: Any] = `decision_info("approved")`
 

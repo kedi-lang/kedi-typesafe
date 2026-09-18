@@ -26,8 +26,9 @@ draft adds at most one generation and one decision; there is no unbounded loop.
 Run date: September 19, 2026, Europe/Istanbul (September 18 UTC).
 The complete record is [live_run.json](live_run.json), with the program SHA-256,
 dependency versions, output, per-invocation usage, and measured durations.
-The recorded source hash predates a later blank-line-only readability edit to
-`main.kedi`; no statements or prompts were changed by that edit.
+The recorded source hash predates readability edits to `main.kedi`: added blank
+lines and moved the `Annotated` declaration into the prelude as `SupportedReply`.
+The decision question and output schema are unchanged.
 
 | Case | Probability of a supported reply | Boolean at threshold 0.85 | Requests |
 | --- | ---: | --- | ---: |
