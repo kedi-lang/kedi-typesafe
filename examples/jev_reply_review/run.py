@@ -1,4 +1,4 @@
-"""Run the pitch example and its decision/repair controls with live providers."""
+"""Run the reply-review example and its decision/repair controls with live providers."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Kedi + Jev: Generate, Review, Revise
 
-A working example for the Diogo InMail. A generative model writes a customer
+A runnable reply-review workflow. A generative model writes a customer
 reply. Jev evaluates whether it invents actions, approvals, commitments, or
 deadlines unsupported by the supplied policy. Kedi returns the draft or revises
 it once and checks again. If the second check fails, it returns a human-review
@@ -72,7 +72,7 @@ repository's `.env` or process environment. With that environment activated,
 run from the `kedi-typesafe` repository root:
 
 ```sh
-PYDANTIC_AI_NO_BANNER=1 python examples/jev_reply_review/run.py --output /tmp/kedi-jev-pitch-run.json
+PYDANTIC_AI_NO_BANNER=1 python examples/jev_reply_review/run.py --output /tmp/kedi-jev-reply-review.json
 ```
 
 When this repository is checked out as `typesafe/` inside the Kedi workspace,
@@ -80,7 +80,7 @@ the workspace environment and dotenv file can be used explicitly:
 
 ```sh
 source .venv/bin/activate
-PYDANTIC_AI_NO_BANNER=1 python typesafe/examples/jev_reply_review/run.py --env-file .env --output /tmp/kedi-jev-pitch-run.json
+PYDANTIC_AI_NO_BANNER=1 python typesafe/examples/jev_reply_review/run.py --env-file .env --output /tmp/kedi-jev-reply-review.json
 ```
 
 The runner executes the real Kedi file, then positive, negative, and repair
@@ -106,15 +106,3 @@ records are retained:
 The probability is Jev's estimate, not a correctness guarantee. This result does
 not establish reliability across other messages or repeated trials. Jev costs
 are absent from the recorded usage, so no total dollar cost is claimed.
-
-## Short InMail Introduction
-
-Subject: What we're building with Jev
-
-Hey Diogo - we've been building Kedi, a language for typed model workflows, for
-the past year. Here's a small working example using Jev: a generative model
-writes a customer reply, Jev evaluates it against the policy, and the program
-can revise it based on that decision. The probability and threshold are
-inspectable directly from the output binding.
-
-I'd love to hear what you think of this approach.
