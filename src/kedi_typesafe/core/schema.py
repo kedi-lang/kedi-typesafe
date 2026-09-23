@@ -198,7 +198,12 @@ def build_evaluation_plan(
                 raise TypeSafeSchemaError(
                     "Multi-label outputs require a finite string Literal/Enum"
                 )
-            instructions = prop.get("description") or f"Which labels apply to {' '.join(path)}?"
+            item_description = item.get("description")
+            instructions = (
+                prop.get("description")
+                or (item_description.strip() if isinstance(item_description, str) else None)
+                or f"Which labels apply to {' '.join(path)}?"
+            )
             for index, option in enumerate(spec.options):
                 meaning = spec.criteria.get(option) if spec.criteria else None
                 questions.append(

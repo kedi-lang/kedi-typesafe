@@ -94,6 +94,32 @@ def test_full_plan_preserves_metadata_and_nested_fields() -> None:
     assert result.metadata["answers"]["email"]["source"] == "no_candidates"
 
 
+def test_multilabel_choice_uses_item_description_when_list_has_none() -> None:
+    class Tagged(BaseModel):
+        labels: list[
+            Annotated[
+                Literal["urgent", "billing"],
+                Field(description="Classify the request by topic"),
+                ChoiceCriteria({"urgent": "Time sensitive", "billing": "Payments"}),
+            ]
+        ]
+
+    schema = Tagged.model_json_schema()
+    plan = build_evaluation_plan(schema)
+
+    assert [question.instructions for question in plan.questions] == [
+        "Classify the request by topic\nDoes the label 'urgent' apply?",
+        "Classify the request by topic\nDoes the label 'billing' apply?",
+    ]
+    assert plan.questions[0].criteria["true"] == "Time sensitive"
+
+    schema["properties"]["labels"]["description"] = "Classify the entire list"
+    with_list_description = build_evaluation_plan(schema)
+    assert with_list_description.questions[0].instructions == (
+        "Classify the entire list\nDoes the label 'urgent' apply?"
+    )
+
+
 @pytest.mark.parametrize(
     "value", [None, True, False, "0.85", -0.1, 1.1, float("nan"), float("inf")]
 )
